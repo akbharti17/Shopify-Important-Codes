@@ -1,0 +1,161 @@
+<div class="cbb-shipping-rates-calculator-shipping-address-chooser">
+          
+            <select id="country" name="country" class="cbb-shipping-rates-calculator-country-select" style="display: inline-block; appearance: menulist; background-image: none; width: auto; margin-right: 5px; margin-top: 0.3em; margin-bottom: 2px; padding: 2px; height: 40px; line-height: 40px; font-size: 0.9em; vertical-align: bottom;"><option class="cbb-shipping-rates-calculator-country-option" value="Australia">Australia</option></select>
+            <select id="region" name="region" class="cbb-shipping-rates-calculator-region-select" style="display: inline-block; appearance: menulist; background-image: none; width: auto; margin-right: 5px; margin-top: 0.3em; margin-bottom: 2px; padding: 2px; height: 40px; line-height: 40px; font-size: 0.9em; vertical-align: bottom;">
+            <option class="cbb-shipping-rates-calculator-region-option" value="Australian Capital Territory">Australian Capital Territory</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="New South Wales" selected>New South Wales</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="Northern Territory">Northern Territory</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="Queensland">Queensland</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="South Australia">South Australia</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="Tasmania">Tasmania</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="Victoria">Victoria</option>
+            <option class="cbb-shipping-rates-calculator-region-option" value="Western Australia">Western Australia</option>
+            </select>
+            <input type="text" id="zipCode" name="zipCode" size="10" placeholder="Zip code" aria-label="Zip code" class="cbb-shipping-rates-calculator-zip-code" style="display: inline-block; appearance: textfield; width: auto; margin-right: 5px; margin-top: 0.3em; margin-bottom: 2px; padding: 2px; height: 40px; line-height: 40px; font-size: 0.9em; vertical-align: bottom;" required>
+            <button {% if product.available %}{% else %} {{ 'disabled' }}{% endif %} id="getship" style="margin-top:5px;">Gather shipping rates</button>
+         
+          
+        </div>
+        <h1 class="shipping"></h1>
+      </div>
+
+<script>
+  
+//    console.log('yes');
+  
+  $("#getship").click(function(){
+//     alert($('#country :selected').val());
+//      alert($('#region option:selected').val());
+      var zip=$('#zipCode').val();
+        var patt = new RegExp("^\\d{4}$");
+        var res = patt.test(zip);
+    console.log(res);
+//     alert($('#quantity').val());
+    var id="{{ variant.id }}";
+//     alert(id);
+    $.ajax({
+      type: "POST",
+      url: '/cart/clear.js',
+      success: function(){
+//         alert('You cleared the cart!');
+        $('.cart-container> *').load();
+      },
+      dataType: 'json'
+    });
+//     jQuery.post('/cart/add.js', {
+//       quantity: 1,
+//       id: id
+//     });
+    
+    
+    	var getRates = function(variantId){
+
+		/* add whatever sanity checks you need in addition to the one below */
+		if(typeof variantId === 'undefined'){ return }
+
+		/* the main quantity element */
+		var productQuantity = document.getElementById('Quantity');
+
+		var quantity = productQuantity ? parseInt(productQuantity.value):1;
+		var addData = {
+			'id':variantId,
+			'quantity':quantity
+		};
+
+		fetch('/cart/add.js', {
+			body: JSON.stringify(addData),
+			credentials: 'same-origin',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-Requested-With':'xmlhttprequest' /* XMLHttpRequest is ok too, it's case insensitive */
+			},
+			method: 'POST'
+		}).then(function(response) {
+			return response.json();
+		}).then(function(json) {
+			/* we have JSON */
+			console.log(json);
+			/* Change the cookie value back to what it was */
+
+			$.ajax({
+				type: "GET",
+				url: '/cart/shipping_rates.json',
+				data: {
+					'shipping_address[country]':$('#country :selected').val(),
+					'shipping_address[province]':$('#region option:selected').val(),
+					'shipping_address[zip]':$('#zipCode').val()
+				},
+              beforeSend: function(){
+                $('#getship').text("Calculating Shipping...");
+                
+              },
+				success: function(d){
+// 					alert(d.shipping_rates[0].price);
+                   $('#getship').text("Gather shipping rates");
+                  $('.shipping').html("<b>Shipping Cost :</b> $"+d.shipping_rates[0].price);
+                  console.log(e);
+                    
+				},
+				error: function() {
+                $('.error').text("Invalid Zipcode for this territory").css('color','red');
+                $('#getship').text("Gather shipping rates");
+                  $('.shipping').html('');
+              },
+				dataType: 'json'
+			});
+
+			
+		}).catch(function(err) {
+			/* uh oh, we have error. */
+			console.error(err);
+			
+		});
+
+	};
+    
+    if(zip==''){
+      console.log('error');
+      $('.error').text("Zipcode can't be blank").css('color','red');
+      $('.shipping').html('');
+    }else if(res==false){
+      $('.error').text("Invalid Zipcode").css('color','red');
+      $('.shipping').html('');
+    }
+    else{
+      $('.error').text('');
+      getRates(id);
+    }
+    
+    
+    
+    
+    
+  })
+  
+//   $('#getship').click(function(){
+//     console.log('yes');
+//      $.ajax({
+// 				type: "GET",
+// 				url: '/cart/shipping_rates.json',
+// 				data: {
+// 					'shipping_address[country]':Australia,
+// 					'shipping_address[province]':New South Wales,
+// 					'shipping_address[zip]':1324
+// 				},
+// 				success: function(d){
+//                   console.log(d.shipping_rates[0].price);
+// // 					if(d.shipping_rates && d.shipping_rates.length){
+// // 						shippingMessage.innerHTML = 'First rate = '+d.shipping_rates[0].name+'<br>Price = '+d.shipping_rates[0].price;
+// // 					}
+// // 					resetCartCookie()
+// 				},
+// 				error: function(){
+// // 					resetCartCookie();
+// // 					shippingMessage.innerHTML = '';
+// 				},
+// 				dataType: 'json'
+// 			});        
+    
+//   })
+   
+</script>
